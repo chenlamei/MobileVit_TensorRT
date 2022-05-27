@@ -15,13 +15,13 @@
 - 网络转换后出现很多低效率的ForeignNode
 - ![image](https://user-images.githubusercontent.com/106289938/170434773-e41dfcd6-531f-4423-8dcf-44ebf7b336b8.png)
 
+
+- 动态网络转换onnx后会生成大量shape操作相关节点
+
+![image](https://user-images.githubusercontent.com/106289938/170435170-c58feb3f-74c1-40c4-9aa0-794b7e7d3c81.png)
+
 - 动态网络转成TRT文件时会出现如下错误
 
 python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split.cpp:350: void myelin::ir::kqv_split_pattern_t::check_transpose(): Assertion `in_dims.size() == 3' failed.
   
 ![image](https://user-images.githubusercontent.com/106289938/170433167-e32e5cbe-af6d-49ae-82cc-d177d9133252.png)
-
-- 动态网络转换后会生成大量shape操作相关节点
-
-![image](https://user-images.githubusercontent.com/106289938/170435170-c58feb3f-74c1-40c4-9aa0-794b7e7d3c81.png)
-
