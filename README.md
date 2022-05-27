@@ -11,7 +11,7 @@
 ![Image_20220526110045](https://user-images.githubusercontent.com/106289938/170406914-d78b4042-a4bb-4732-902c-5b64dd9969f0.png)
 
 ### 模型优化的难点
-
+- 运行步骤（1）mkdir target (2)python convert_to_onnx.py (3)python convert_to_trt.py
 - 网络转换后出现很多低效率的ForeignNode
 - ![image](https://user-images.githubusercontent.com/106289938/170434773-e41dfcd6-531f-4423-8dcf-44ebf7b336b8.png)
 
