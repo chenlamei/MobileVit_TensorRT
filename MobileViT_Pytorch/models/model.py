@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 from .module import InvertedResidual, MobileVitBlock
-
 model_cfg = {
     "xxs":{
         "features": [16, 16, 24, 24, 48, 48, 64, 64, 80, 80, 320],
@@ -27,7 +26,6 @@ model_cfg = {
 class MobileViT(nn.Module):
     def __init__(self, img_size, features_list, d_list, transformer_depth, expansion, num_classes = 1000):
         super(MobileViT, self).__init__()
-
         self.stem = nn.Sequential(
             nn.Conv2d(in_channels = 3, out_channels = features_list[0], kernel_size = 3, stride = 2, padding = 1),
             InvertedResidual(in_channels = features_list[0], out_channels = features_list[1], stride = 1, expand_ratio = expansion),

@@ -134,7 +134,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
 
     # Create folder to save model
-    WEIGHTS_PATH = "./weights-file"
+    WEIGHTS_PATH = "./weights"
     if not os.path.exists(WEIGHTS_PATH):
         os.makedirs(WEIGHTS_PATH)
 

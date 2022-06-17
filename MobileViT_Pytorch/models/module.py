@@ -90,14 +90,13 @@ class MultiHeadSelfAttention(nn.Module):
 
     def forward(self, x):
         qkv = self.to_qvk(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b p n (h d) -> b p h n d', h = self.num_heads), qkv)
-
+        #q, k, v = map(lambda t: rearrange(t, 'b p n (h d) -> b p h n d', h = self.num_heads), qkv)
+        q, k, v =qkv[0],qkv[1],qkv[2]
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale_factor
         attn = torch.softmax(dots, dim = -1)
         out = torch.matmul(attn, v)
-        out = rearrange(out, 'b p h n d -> b p n (h d)')
+        #out = rearrange(out, 'b p h n d -> b p n (h d)')
         return self.w_out(out)
-
 
 class Transformer(nn.Module):
     def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.1):
@@ -114,6 +113,7 @@ class Transformer(nn.Module):
             x = attn(x) + x
             x = ff(x) + x
         return x
+
 
 
 class InvertedResidual(nn.Module):
