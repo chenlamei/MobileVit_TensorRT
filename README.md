@@ -114,7 +114,7 @@ python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split
 
   test_trt.py 可输出不同batchsize下tensorrt 模型和pytorch模型输出差异（包括相对差和绝对差的平均值、中位数、最大值）。实际测试发现由于模型任务为分类，导致大部分输出值数值较小，相对误差较大，所以在判断模型精度时主要以绝对误差为主。pytorch模型是在参考源码给出的训练好的模型，模型文件为 MobileViT_Pytorch/weights-file/model_best.pth.tar。测试数据的生成可参考benchmark/gen_test_data.py，基准pytorch模型的精度测试可参考benchmark/test_torch_precision.py 。
 
-  test_trt_precision.py 可测试tensorrt 模型在imagenet数据集上的正确率，相对test_trt.py更有说服力一些，但需要下载测试数据集，且数据集为LMDB格式，可参考https://github.com/xunge/pytorch_lmdb_imagenet将原始数据转为LMDB格式。在测试INT8 engine时发现使用test_trt_precision.py更有效，因为分类任务不需要严格保证输出数值的准确性，只需要保证其数值的相对大小，分类结果的正确性，尤其是QAT生成的模型只能使用test_trt_precision.py来测试精度。
+  test_trt_precision.py 可测试tensorrt 模型在imagenet数据集上的正确率，相对test_trt.py更有说服力一些，但需要下载测试数据集，且数据集为LMDB格式，可参考https://github.com/xunge/pytorch_lmdb_imagenet 将原始数据转为LMDB格式。在测试INT8 engine时发现使用test_trt_precision.py更有效，因为分类任务不需要严格保证输出数值的准确性，只需要保证其数值的相对大小，分类结果的正确性，尤其是QAT生成的模型只能使用test_trt_precision.py来测试精度。
 
 - 性能
 
