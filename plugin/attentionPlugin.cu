@@ -129,7 +129,7 @@ matirxMulKernel(const T *__restrict__ pInput, T *__restrict__ pOutput,
 }
 
 template <typename T>
-__global__ void SoftmaxKernel(T *pInput, T *pOutput, const float scale,const int len) {
+__global__ void SoftmaxSafeKernel(T *pInput, T *pOutput, const float scale,const int len) {
   __shared__ T tmp_shared[kWarpSize];
   __shared__ T max_result;
   __shared__ T sum_result;
@@ -157,7 +157,23 @@ __global__ void SoftmaxKernel(T *pInput, T *pOutput, const float scale,const int
   if (threadIdx.x < len)
     pOutput[idx] = data_bak / sum_result;
 }
+template <typename T>
+__global__ void SoftmaxKernel(T *pInput, T *pOutput, const float scale,const int len) {
+  __shared__ T tmp_shared[kWarpSize];
+  __shared__ T sum_result;
 
+  T data = 0;
+  const int idx = blockIdx.x * len + threadIdx.x;
+  if (threadIdx.x < len) {
+    data = __expf(float(__ldg(&pInput[idx]))*scale);
+  }
+  T data_bak = data;
+  __syncwarp();
+  // exp sum
+  BlockReduceSum(data, tmp_shared, &sum_result);
+  if (threadIdx.x < len)
+    pOutput[idx] = data_bak / sum_result;
+}
 int32_t AttentionPlugin::enqueue(const PluginTensorDesc *inputDesc,
                                  const PluginTensorDesc *outputDesc,
                                  const void *const *inputs,

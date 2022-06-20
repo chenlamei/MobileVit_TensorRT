@@ -6,18 +6,19 @@ PluginFieldCollection LayerNormPluginCreator::fc_{};
 std::vector<PluginField> LayerNormPluginCreator::attr_;
 
 constexpr int kWarpSize = 32;
-__inline__ __device__ void WarpReduceSum(float &local_data) {
+template <typename T>
+__inline__ __device__ void WarpReduceSum(T &local_data) {
 #pragma unroll
   for (int mask = kWarpSize / 2; mask > 0; mask /= 2) {
     local_data += __shfl_down_sync(0xffffffff, local_data, mask, kWarpSize);
   }
 }
-
-__inline__ __device__ void BlockReduceMean(float &local_data, float *sum_shared,
-                                           float *mean_result, int len) {
+template <typename T>
+__inline__ __device__ void BlockReduceMean(T &local_data, T *sum_shared,
+                                           T *mean_result, int len) {
   float warp_sum;
-  const int lid = threadIdx.x % kWarpSize;
-  const int wid = threadIdx.x / kWarpSize;
+  const int lid = threadIdx.x & 0x1f;
+  const int wid = threadIdx.x >> 5;
   WarpReduceSum(local_data);
   __syncthreads();
   if (lid == 0) {
@@ -40,19 +41,18 @@ __inline__ __device__ void BlockReduceMean(float &local_data, float *sum_shared,
   }
   __syncthreads();
 }
-
 template <typename T>
 __global__ void LayerNormKernel(const T *__restrict__ pInput,
                                 const T *__restrict__ gamma,
                                 const T *__restrict__ beta,
                                 T *__restrict__ pOutput, const int ld) {
   const int tx = threadIdx.x, index = blockIdx.x * ld + threadIdx.x;
-  __shared__ float sum_shared[kWarpSize];
-  __shared__ float mean_result;
-  __shared__ float var_result;
-  float value = 0, value_bak = 0;
+  __shared__ T sum_shared[kWarpSize];
+  __shared__ T mean_result;
+  __shared__ T var_result;
+  T value = 0, value_bak = 0;
   if (tx < ld) {
-    value = (float)__ldg(&pInput[index]);
+    value = __ldg(&pInput[index]);
     value_bak = value;
   }
   __syncwarp();
@@ -62,12 +62,10 @@ __global__ void LayerNormKernel(const T *__restrict__ pInput,
   }
   __syncwarp();
   BlockReduceMean(value, sum_shared, &var_result, ld);
-  // if(threadIdx.x==0){ printf("block %d mean:%f var:%f
-  // stride:%d\n",blockIdx.x,mean_result,var_result,blockDim.x/2);}
   if (tx < ld) {
-    pOutput[index] = (T)((value_bak - mean_result) *
-                             rsqrtf(var_result + 1e-5f) * (float)gamma[tx] +
-                         (float)beta[tx]);
+    pOutput[index] = (T)((float)(value_bak - mean_result) *
+                             rsqrtf(float(var_result) + 1e-5f)) *gamma[tx] +
+                         beta[tx];
   }
 }
 
@@ -131,8 +129,6 @@ int32_t LayerNormPlugin::enqueue(const PluginTensorDesc *inputDesc,
   
   const int blocksize = ((n_ - 1) / 32 + 1) * 32;
 
-  // printf("ld is %d bolck_num is %d blocksize is %d
-  // \n",ld,bolck_num,blocksize);
   // ld should be 144 or 192 or 240
   if (inputDesc[0].type == DataType::kFLOAT) {
     LayerNormKernel<<<bolck_num, blocksize, 0, stream>>>(
