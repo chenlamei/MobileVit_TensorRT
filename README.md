@@ -160,3 +160,17 @@ python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split
    INT8 trt (IInt8MinMaxCalibrator)             |	65.798      | 	86.664
    Plugin INT8 trt(QAT+IInt8EntropyCalibrator2) |	67.76       |	  88.056
 
+# 经验与体会
+
+- 动态网络VS静态网络
+
+  静态网络相比于动态网络在pytorch模型转为onnx模型和onnx转为tensorrt模型时出问题的可能性更低;静态网络latency相对动态网络更低；如果能够使用静态网络应该优先使用静态网络
+  
+- plugin添加效果说明
+
+  有时添加一个plugin在实际中不会加速，反而会增大latency，例如FP16精度下mobilevit只添加 attention plugin，latency会增大很多。主要原因是因为plugin影响力trt的自动融合，导致本可以融合的被拆分了。
+
+- 不同硬件平台优化效果可能差异较大
+
+  不同的nvidia芯片加速效果不同，实际中发现v100上的很多加速在a10上都没有效果。
+  
