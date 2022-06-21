@@ -191,8 +191,10 @@ public:
     bool res = false;
     switch (pos) {
     case 0:
-      res = (inOut[pos].type == DataType::kFLOAT ||
-             inOut[pos].type == DataType::kHALF);
+      res =
+          (inOut[pos].type == DataType::kFLOAT ||
+           inOut[pos].type == DataType::kHALF ||
+           (inOut[pos].type == DataType::kINT8 && inOut[pos].dims.nbDims >= 3));
       break;
     case 1:
       res = inOut[pos].type == inOut[0].type;

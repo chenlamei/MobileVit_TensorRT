@@ -6,8 +6,7 @@ PluginFieldCollection LayerNormPluginCreator::fc_{};
 std::vector<PluginField> LayerNormPluginCreator::attr_;
 
 constexpr int kWarpSize = 32;
-template <typename T>
-__inline__ __device__ void WarpReduceSum(T &local_data) {
+template <typename T> __inline__ __device__ void WarpReduceSum(T &local_data) {
 #pragma unroll
   for (int mask = kWarpSize / 2; mask > 0; mask /= 2) {
     local_data += __shfl_down_sync(0xffffffff, local_data, mask, kWarpSize);
@@ -64,8 +63,41 @@ __global__ void LayerNormKernel(const T *__restrict__ pInput,
   BlockReduceMean(value, sum_shared, &var_result, ld);
   if (tx < ld) {
     pOutput[index] = (T)((float)(value_bak - mean_result) *
-                             rsqrtf(float(var_result) + 1e-5f)) *gamma[tx] +
-                         beta[tx];
+                         rsqrtf(float(var_result) + 1e-5f)) *
+                         gamma[tx] +
+                     beta[tx];
+  }
+}
+
+__global__ void LayerNormKernelDQQ(const int8_t *__restrict__ pInput,
+                                   const __half *__restrict__ gamma,
+                                   const __half *__restrict__ beta,
+                                   int8_t *__restrict__ pOutput, const int ld,
+                                   const float dqscale, const float qscale) {
+  const int tx = threadIdx.x, index = blockIdx.x * ld + threadIdx.x;
+  __shared__ __half sum_shared[kWarpSize];
+  __shared__ __half mean_result;
+  __shared__ __half var_result;
+  __half value = 0, value_bak = 0;
+  if (tx < ld) {
+    //dequantize
+    value = __half(__ldg(&pInput[index]) * dqscale);
+    value_bak = value;
+  }
+  __syncwarp();
+  BlockReduceMean(value, sum_shared, &mean_result, ld);
+  if (tx < ld) {
+    value = (value_bak - mean_result) * (value_bak - mean_result);
+  }
+  __syncwarp();
+  BlockReduceMean(value, sum_shared, &var_result, ld);
+  if (tx < ld) {
+    value = (__half)((float)(value_bak - mean_result) *
+                     rsqrtf(float(var_result) + 1e-5f)) *
+                gamma[tx] +
+            beta[tx];
+    //quantize
+    pOutput[index] = __half2int_rn(value * (__half)qscale);
   }
 }
 
@@ -115,18 +147,17 @@ __global__ void LayerNormNaiveKernel(const T *__restrict__ pInput,
             (float)beta[tx]);
   }
 }
-int64_t volume(nvinfer1::Dims const& d)
-{
-    return std::accumulate(d.d, d.d + d.nbDims, 1, std::multiplies<int64_t>());
+int64_t volume(nvinfer1::Dims const &d) {
+  return std::accumulate(d.d, d.d + d.nbDims, 1, std::multiplies<int64_t>());
 }
 int32_t LayerNormPlugin::enqueue(const PluginTensorDesc *inputDesc,
                                  const PluginTensorDesc *outputDesc,
                                  const void *const *inputs,
                                  void *const *outputs, void *workspace,
                                  cudaStream_t stream) noexcept {
-                                 
-  int bolck_num =volume(inputDesc[0].dims)/n_;
-  
+
+  int bolck_num = volume(inputDesc[0].dims) / n_;
+
   const int blocksize = ((n_ - 1) / 32 + 1) * 32;
 
   // ld should be 144 or 192 or 240
@@ -141,6 +172,12 @@ int32_t LayerNormPlugin::enqueue(const PluginTensorDesc *inputDesc,
         (__half *)outputs[0], n_);
     // LayerNormNaiveKernel <<<bolck_num,256 , 0, stream>>>((__half
     // *)inputs[0],weight_half_gpu_,bias_half_gpu_, (__half *)outputs[0],ld);
+  } else if (inputDesc[0].type == DataType::kINT8) {
+    const float dqScale = inputDesc[0].scale;
+    const float qScale = 1.0 / outputDesc[0].scale;
+    LayerNormKernelDQQ<<<bolck_num, blocksize, 0, stream>>>(
+        (int8_t *)inputs[0], weight_half_gpu_, bias_half_gpu_,
+        (int8_t *)outputs[0], n_, dqScale, qScale);
   } else {
     printf("Unsupport datatype!\n");
   }
