@@ -139,16 +139,16 @@ python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split
 
    batch|base FP32	trt| FP32 trt|  FP16 trt	| INT8 trt| Plugin INT8 trt
    |---| ----- | ----- | ----- | ----- | ----- |
-   1	   |1.577     |	1.223|	0.694	|0.956 |	0.665
-   4	   |3.110     |	2.693|	1.354	|1.353 |	0.994
-   8	   |5.602     |	5.082|	2.509 |2.362 |	1.791
+   1	   |1.577     |	1.223|	0.694	|0.956 |	0.664
+   4	   |3.110     |	2.693|	1.354	|1.353 |	0.971
+   8	   |5.602     |	5.082|	2.509 |2.362 |	1.774
   - 加速比 (base FP32)/(opt model)
 
    batch|base FP32	trt| FP32 trt|  FP16 trt	| INT8 trt| Plugin INT8 trt
    |---| ----- | ----- | ----- | ----- | ----- |
    1	   |1.0     |	1.289|	2.272 	| 1.650 |	 2.371
-   4	   |1.0     |	1.155 |	2.297 	| 2.299 |	 3.129
-   8	   |1.0     |	1.102 |	2.233   | 2.372 |	 3.128
+   4	   |1.0     |	1.155 |	2.297 	| 2.299 |	 3.203
+   8	   |1.0     |	1.102 |	2.233   | 2.372 |	 3.158
 
   - imagenet正确率结果
 
@@ -158,7 +158,7 @@ python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split
    FP32 trt                                     |	68.04       | 	88.362
    FP16 trt                                     |	68.044      | 	88.344
    INT8 trt (IInt8MinMaxCalibrator)             |	65.798      | 	86.664
-   Plugin INT8 trt(QAT+IInt8EntropyCalibrator2) |	67.76       |	  88.056
+   Plugin INT8 trt(QAT+IInt8EntropyCalibrator2) |	67.736      |	  88.1
 
 # 经验与体会
 
