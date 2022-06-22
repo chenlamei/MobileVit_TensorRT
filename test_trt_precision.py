@@ -30,20 +30,21 @@ class TrtMobileVitInfer(object):
             return
         self.context = self.engine.create_execution_context()
         self.context.set_binding_shape(0, [batchsize,3,256,256])
+        _, self.stream = cudart.cudaStreamCreate()
         self.buffeSizeIn = batchsize*3*256*256 * trt.float32.itemsize
         self.buffeSizeOut =batchsize*1000 * trt.float32.itemsize
         self.bufferD =[] 
-        self.bufferD.append(cudart.cudaMalloc(self.buffeSizeIn)[1])
-        self.bufferD.append(cudart.cudaMalloc(self.buffeSizeOut)[1])
+        self.bufferD.append(cudart.cudaHostAlloc(self.buffeSizeIn, cudart.cudaHostAllocWriteCombined)[1])
+        self.bufferD.append(cudart.cudaHostAlloc(self.buffeSizeOut, cudart.cudaHostAllocWriteCombined)[1])
     def __del__(self):
-        cudart.cudaFree(self.bufferD[0])
-        cudart.cudaFree(self.bufferD[1])
+        cudart.cudaFreeHost(self.bufferD[0])
+        cudart.cudaFreeHost(self.bufferD[1])
     def infer(self,input_data,output_data):
         
-        cudart.cudaMemcpy(self.bufferD[0], input_data.ctypes.data, input_data.nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice)
-        self.context.execute_v2(self.bufferD)
-
-        cudart.cudaMemcpy(output_data.ctypes.data, self.bufferD[1], output_data.nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost) 
+        cudart.cudaMemcpyAsync(self.bufferD[0], input_data.ctypes.data, input_data.nbytes, cudart.cudaMemcpyKind.cudaMemcpyHostToDevice, self.stream)
+        self.context.execute_async_v2(self.bufferD,self.stream)
+        cudart.cudaMemcpyAsync(output_data.ctypes.data, self.bufferD[1], output_data.nbytes, cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost,self.stream) 
+        cudart.cudaStreamSynchronize(self.stream)
 
 
 def test_precision(trt_path,data_path,batch):
@@ -86,4 +87,3 @@ if __name__=='__main__':
   args = parser.parse_args()
   print(args)
   test_precision(args.trt_path,args.data_path,args.batch)
-  #valdir="/home/notebook/data/group/imagenet-pytorch-lmdb/val/val.lmdb"

@@ -23,7 +23,7 @@ python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split
 - 网络转换成INT8 trt engine时会阻碍tensrrt自动层融合
 
 
-# 优化过程
+# 优化过程（具体可看doc中《MobileVit_TensorRT优化》PPT）
 - 环境依赖
 
   - 硬件环境：本次比赛使用nvidia官方的docker，镜像名称为nvcr.io/nvidia/tensorrt:22.04-py3 ，GPU为NVIDIA A10，CPU为4核Intel(R) Xeon(R) Platinum 8369B CPU @ 2.90GHz
@@ -169,6 +169,12 @@ python: /root/gpgpu/MachineLearning/myelin/src/compiler/optimizer/kqv_gemm_split
 - plugin添加效果说明
 
   有时添加一个plugin在实际中不会加速，反而会增大latency，例如FP16精度下mobilevit只添加 attention plugin，latency会增大很多。主要原因是因为plugin影响力trt的自动融合，导致本可以融合的被拆分了。
+  
+- 动态网络builde engine中profile shape的影响
+
+  本项目中convert_to_trt.py动态网络生成trt时默认opt shape为[4,3,256,256]，但在实际实验发现不同opt shape，会影响模型最终加速比。
+  所以在实际中若shape范围较大可使用 https://github.com/NVIDIA/trt-samples-for-hackathon-cn/blob/master/cookbook/09-Advance/MultiOptimizationProfile 中MultiProfile技术来获得最佳加速比。
+
 
 - 不同硬件平台优化效果可能差异较大
 
